@@ -94,3 +94,34 @@ func ListTodos(status string) []Todo {
 
 	return todos
 }
+
+func UpdateTodo(id, desc, status string) {
+	rdb := NewRedisClient()
+	defer rdb.Close()
+
+	exists, err := rdb.SIsMember(ctx, todoIDsSet, "todo:"+id).Result()
+	if err != nil {
+		log.Fatalf("确定todo(%s)是否存在前出现错误(%v)", id, err)
+	}
+
+	if !exists {
+		log.Fatalf("您想要修改的todo(%s)不存在", id)
+	}
+
+	updatedTodo := map[string]interface{}{}
+
+	if status != "" {
+		updatedTodo["status"] = status
+	}
+
+	if desc != "" {
+		updatedTodo["desc"] = desc
+	}
+
+	err = rdb.HSet(ctx, "todo:"+id, updatedTodo).Err()
+	if err != nil {
+		log.Fatalf("无法更新该todo(%s)", id)
+	}
+	fmt.Printf("该todo(%s)已更新\n", id)
+
+}
