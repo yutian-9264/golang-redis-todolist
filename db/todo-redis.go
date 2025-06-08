@@ -125,3 +125,23 @@ func UpdateTodo(id, desc, status string) {
 	fmt.Printf("该todo(%s)已更新\n", id)
 
 }
+
+func DeleteTodo(id string) {
+	rdb := NewRedisClient()
+	defer rdb.Close()
+
+	n, err := rdb.Del(ctx, "todo:"+id).Result()
+	if err != nil {
+		log.Fatalf("删除todo(%s)失败，原因是:%v", id, err)
+	}
+
+	if n > 0 {
+		err = rdb.SRem(ctx, todoIDsSet, "todo:"+id).Err()
+		if err != nil {
+			log.Fatalf("从todoIDsSet删除todo(%s)失败，原因是:%v", id, err)
+		}
+		fmt.Println("删除todo(%s)成功", id)
+	} else {
+		fmt.Println("无法找到您输入的todo(%s)", id)
+	}
+}
