@@ -10,5 +10,5 @@ import (
 
 func main() {
 	cmd.Execute()
-	db.ExampleClient()
+	db.NewRedisClient()
 }
