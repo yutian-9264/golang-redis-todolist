@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"strings"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -14,6 +15,12 @@ var ctx = context.Background()
 const todoIDCounter = "todoid"
 const todoIDsSet = "todos-id-set"
 const statusPending = "pending"
+
+type Todo struct {
+	ID     string
+	Desc   string
+	Status string
+}
 
 func NewRedisClient() *redis.Client {
 	rdb := redis.NewClient(&redis.Options{
@@ -47,4 +54,43 @@ func CreateTodo(desc string) {
 	}
 	fmt.Println("已成功创建一条todo!")
 
+}
+
+func ListTodos(status string) []Todo {
+	rdb := NewRedisClient()
+	defer rdb.Close()
+
+	todoHashKeys, err := rdb.SMembers(ctx, todoIDsSet).Result()
+	if err != nil {
+		log.Fatal("查找todo任务的名称失败", err)
+	}
+
+	todos := []Todo{}
+
+	for _, todoHashkey := range todoHashKeys {
+		id := strings.Split(todoHashkey, ":")[1]
+
+		todoMap, err := rdb.HGetAll(ctx, todoHashkey).Result()
+		if err != nil {
+			log.Fatalf("读“%s”todo任务失败 - %v\n", todoHashkey, err)
+		}
+
+		var todo Todo
+		if status == "" {
+			todo = Todo{id, todoMap["desc"], todoMap["status"]}
+			todos = append(todos, todo)
+		} else {
+			if status == todoMap["status"] {
+				todo = Todo{id, todoMap["desc"], todoMap["status"]}
+				todos = append(todos, todo)
+			}
+		}
+	}
+
+	if len(todos) == 0 {
+		fmt.Println("没有Todo任务")
+		return nil
+	}
+
+	return todos
 }
